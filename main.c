@@ -7,226 +7,213 @@
 #define TAMANHO 8
 #define NAVIO 1
 #define NAVIOATINGIDO 2
+typedef struct {
+    int tamanho;
+    int quantidade_navios;
+} Config;
 
-void limpar_campo(int **campo, int tamanho){
-    if(campo != NULL){
-        for(int i = 0; i < tamanho; i++){
-            free(campo[i]);
-        }
-        free(campo);
-    }
-}
-void mostrarCampo(int **matriz, int tam) {
-    for(int i = 0; i < tam; i++) {
-        for(int j = 0; j < tam; j++) {
-
-            if(matriz[i][j] == AGUA)
-                printf("~ ");
-            else if(matriz[i][j] == NAVIO)
-                printf("O ");
-            else if(matriz[i][j] == AGUADESCONHECIDA)
-                printf("7 ");
-            else if(matriz[i][j] == NAVIOATINGIDO)
-                printf("X ");
-        }
-        printf("\n");
-    }
-}
-void posicionarBarcos(int **campo, int tam) {
-
-    int linha, coluna, direcao;
-
-    for (int i = 0; i < 4; i++) {
-
-        while (1) {
-
-            linha = rand() % tam;
-            coluna = rand() % tam;
-            direcao = rand() % 2; 
-
-            if (direcao == 0) {
-                if (coluna < tam - 1 &&
-                    campo[linha][coluna] == AGUA &&
-                    campo[linha][coluna + 1] == AGUA) {
-
-                    campo[linha][coluna] = NAVIO;
-                    campo[linha][coluna + 1] = NAVIO;
-                    break;
-                }
-            } else {
-                if (linha < tam - 1 &&
-                    campo[linha][coluna] == AGUA &&
-                    campo[linha + 1][coluna] == AGUA) {
-
-                    campo[linha][coluna] = NAVIO;
-                    campo[linha + 1][coluna] = NAVIO;
-                    break;
-                }
-            }
-        }
-    }
-}
 int **AlocarMatriz(int tam){
-    int **matriz = (int **)malloc(tam * sizeof(int *));
-
-    if(matriz == NULL){
-        printf("ERRO\n");
-        return NULL;
-    }
-
+    int **m = malloc(tam * sizeof(int*));
     for(int i = 0; i < tam; i++){
-        matriz[i] = (int *)malloc(tam * sizeof(int));
-
-        if(matriz[i] == NULL){
-            for(int j = 0; j < i; j++){
-                free(matriz[j]);
-            }
-            free(matriz);
-            return NULL;
-        }
-
-        for(int j = 0; j < tam; j++){
-            matriz[i][j] = AGUA;
-        }
+        m[i] = malloc(tam * sizeof(int));
+        for(int j = 0; j < tam; j++) m[i][j] = AGUA;
     }
-
-    return matriz;
+    return m;
 }
-
-void mostrarmatriz(int **matriz, int tam, const char *titulo){
-    printf("\n%s\n", titulo);
-
-    printf("  ");
-    for(int j = 0; j < tam; j++){
-        printf("%d ", j);
+void limpar_campo(int **m, int tam){
+    for(int i = 0; i < tam; i++) free(m[i]);
+    free(m);
+}
+void salvarConfig(Config cfg){
+    FILE *f = fopen("config.bin","wb");
+    if(f){
+        fwrite(&cfg,sizeof(Config),1,f);
+        fclose(f);
     }
-    printf("\n");
+}
+Config carregarConfig(){
+    Config cfg = {8,4};
+    FILE *f = fopen("config.bin","rb");
+    if(f){
+        fread(&cfg,sizeof(Config),1,f);
+        fclose(f);
+    }
+    return cfg;
+}
+void salvarJogo(int **a, int **b, int tam){
+    FILE *f = fopen("save.bin","wb");
+    fwrite(&tam,sizeof(int),1,f);
 
-    for(int i = 0; i < tam; i++){
-        printf("%d ", i);
-        for(int j = 0; j < tam; j++){
-            printf("%d ", matriz[i][j]);
+    for(int i=0;i<tam;i++) fwrite(a[i],sizeof(int),tam,f);
+    for(int i=0;i<tam;i++) fwrite(b[i],sizeof(int),tam,f);
+
+    fclose(f);
+}
+void carregarJogo(int ***a, int ***b, int *tam){
+    FILE *f = fopen("save.bin","rb");
+    if(!f){
+        printf("Sem save!\n");
+        return;
+    }
+
+    fread(tam,sizeof(int),1,f);
+    *a = AlocarMatriz(*tam);
+    *b = AlocarMatriz(*tam);
+
+    for(int i=0;i<*tam;i++) fread((*a)[i],sizeof(int),*tam,f);
+    for(int i=0;i<*tam;i++) fread((*b)[i],sizeof(int),*tam,f);
+
+    fclose(f);
+}
+void mostrarCampo(int **m, int tam){
+    for(int i=0;i<tam;i++){
+        for(int j=0;j<tam;j++){
+            if(m[i][j]==AGUA) printf("~ ");
+            else if(m[i][j]==NAVIO) printf("O ");
+            else if(m[i][j]==NAVIOATINGIDO) printf("X ");
+            else printf("7 ");
         }
         printf("\n");
     }
 }
+void posicionarBarcos(int **c, int tam, int qtd){
+    for(int i=0;i<qtd;i++){
+        while(1){
+            int l=rand()%tam, col=rand()%tam, d=rand()%2;
 
-void atirarJogador(int **campo, int **visao, int tam) {
-    int linha, coluna;
-
-    printf("Digite linha e coluna: ");
-    scanf("%d %d", &linha, &coluna);
-
-    if (campo[linha][coluna] == NAVIO) {
-        printf("Acertou!\n");
-        campo[linha][coluna] = NAVIOATINGIDO;
-        visao[linha][coluna] = NAVIOATINGIDO;
-    } else {
-        printf("Errou!\n");
-        visao[linha][coluna] = AGUA;
-    }
-}
-void ataqueComputador(int **campo, int **visao, int tam) {
-    int linha, coluna;
-
-    while (1) {
-        linha = rand() % tam;
-        coluna = rand() % tam;
-
-        if (visao[linha][coluna] == AGUADESCONHECIDA) {
-            printf("\nComputador atirou em: %d %d\n", linha, coluna);
-
-            if (campo[linha][coluna] == NAVIO) {
-                printf("Computador acertou!\n");
-                campo[linha][coluna] = NAVIOATINGIDO;
-                visao[linha][coluna] = NAVIOATINGIDO;
-            } else {
-                printf("Computador errou!\n");
-                visao[linha][coluna] = AGUA;
+            if(d==0 && col<tam-1 &&
+               c[l][col]==AGUA && c[l][col+1]==AGUA){
+                c[l][col]=c[l][col+1]=NAVIO;
+                break;
             }
-            break;
+            if(d==1 && l<tam-1 &&
+               c[l][col]==AGUA && c[l+1][col]==AGUA){
+                c[l][col]=c[l+1][col]=NAVIO;
+                break;
+            }
         }
     }
 }
-int main() {
-    int n;
+int verificarVitoria(int **c,int tam){
+    for(int i=0;i<tam;i++)
+        for(int j=0;j<tam;j++)
+            if(c[i][j]==NAVIO) return 0;
+    return 1;
+}
+void turnoJogador(int **inimigo,int **visao,int tam){
+    for(int i=0;i<3;i++){
+        int pos;
+        printf("Ataque %d (-1 sair): ",i+1);
+        scanf("%d",&pos);
+
+        if(pos==-1) exit(0);
+
+        int l=pos/tam, c=pos%tam;
+
+        if(l<0||l>=tam||c<0||c>=tam){
+            printf("Invalido!\n"); i--; continue;
+        }
+
+        if(visao[l][c]!=AGUADESCONHECIDA){
+            printf("Ja atacado!\n"); i--; continue;
+        }
+
+        if(inimigo[l][c]==NAVIO){
+            printf("Impacto!\n");
+            inimigo[l][c]=NAVIOATINGIDO;
+            visao[l][c]=NAVIOATINGIDO;
+        } else{
+            printf("Agua!\n");
+            visao[l][c]=AGUA;
+        }
+    }
+}
+void turnoComputador(int **seu,int **visao,int tam){
+    int a=0;
+    while(a<3){
+        int l=rand()%tam,c=rand()%tam;
+
+        if(visao[l][c]==AGUADESCONHECIDA){
+            if(seu[l][c]==NAVIO){
+                printf("Computador acertou!\n");
+                seu[l][c]=NAVIOATINGIDO;
+                visao[l][c]=NAVIOATINGIDO;
+            } else{
+                printf("Computador errou!\n");
+                visao[l][c]=AGUA;
+            }
+            a++;
+        }
+    }
+}
+int main(){
 
     srand(time(NULL));
+    Config cfg = carregarConfig();
+    int op;
 
-    printf("1 = Novo Jogo\n");
-    printf("2 = Configurar\n");
-    printf("3 = Carregar ultimo Jogo\n");
-    printf("4 = Sair\n");
+    while(1){
 
-    scanf("%d", &n);
+        printf("\n1 Novo\n2 Config\n3 Carregar\n4 Sair\n");
+        scanf("%d",&op);
 
-    int **seu_campo = NULL;
-    int **campo_inimigo = NULL;
-    int **sua_visao = NULL;
-    int **visao_computador = NULL;
+        if(op==1){
+            int tam = cfg.tamanho;
 
-    switch(n){
+            int **seu=AlocarMatriz(tam);
+            int **ini=AlocarMatriz(tam);
+            int **v1=AlocarMatriz(tam);
+            int **v2=AlocarMatriz(tam);
 
-        case 1:
-            printf("Novo Jogo\n");
+            posicionarBarcos(seu,tam,cfg.quantidade_navios);
+            posicionarBarcos(ini,tam,cfg.quantidade_navios);
 
-            seu_campo = AlocarMatriz(TAMANHO);
-            campo_inimigo = AlocarMatriz(TAMANHO);
-            sua_visao = AlocarMatriz(TAMANHO);
-            visao_computador = AlocarMatriz(TAMANHO);
+            for(int i=0;i<tam;i++)
+                for(int j=0;j<tam;j++)
+                    v1[i][j]=v2[i][j]=AGUADESCONHECIDA;
 
-            posicionarBarcos(seu_campo, TAMANHO);
-            posicionarBarcos(campo_inimigo, TAMANHO);
+            while(1){
+                printf("\nSEU CAMPO\n");
+                mostrarCampo(seu,tam);
 
-            for(int i = 0; i < TAMANHO; i++){
-                for(int j = 0; j < TAMANHO; j++){
-                    sua_visao[i][j] = AGUADESCONHECIDA;
-                    visao_computador[i][j] = AGUADESCONHECIDA;
-                }
-            }
+                printf("\nSUA VISAO\n");
+                mostrarCampo(v1,tam);
 
-            if(seu_campo && campo_inimigo && sua_visao && visao_computador){
-
-                printf("\nSEU CAMPO:\n");
-                mostrarCampo(seu_campo, TAMANHO);
-
-                for(int turno = 0; turno < 5; turno++) {
-
-                    printf("\n=== SUA VEZ ===\n");
-                    mostrarCampo(sua_visao, TAMANHO);
-                    atirarJogador(campo_inimigo, sua_visao, TAMANHO);
-
-                    printf("\n=== VEZ DO COMPUTADOR ===\n");
-                    ataqueComputador(seu_campo, visao_computador, TAMANHO);
-
-                    printf("\nSEU CAMPO ATUAL:\n");
-                    mostrarCampo(seu_campo, TAMANHO);
+                turnoJogador(ini,v1,tam);
+                if(verificarVitoria(ini,tam)){
+                    printf("VOCE VENCEU\n"); break;
                 }
 
-                limpar_campo(seu_campo, TAMANHO);
-                limpar_campo(campo_inimigo, TAMANHO);
-                limpar_campo(sua_visao, TAMANHO);
-                limpar_campo(visao_computador, TAMANHO);
+                turnoComputador(seu,v2,tam);
+                if(verificarVitoria(seu,tam)){
+                    printf("VOCE PERDEU\n"); break;
+                }
+
+                salvarJogo(seu,ini,tam);
             }
+            limpar_campo(seu,tam);
+            limpar_campo(ini,tam);
+            limpar_campo(v1,tam);
+            limpar_campo(v2,tam);
+        }
+        else if(op==2){
+            printf("Tamanho: ");
+            scanf("%d",&cfg.tamanho);
 
-            break;
+            printf("Navios: ");
+            scanf("%d",&cfg.quantidade_navios);
 
-        case 2:
-            printf("Configurar\n");
-            break;
+            salvarConfig(cfg);
+        }
+        else if(op==3){
+            int **a,**b,t;
+            carregarJogo(&a,&b,&t);
+            mostrarCampo(a,t);
+            limpar_campo(a,t);
+            limpar_campo(b,t);
+        }
 
-        case 3:
-            printf("Carregar ultimo jogo\n");
-            break;
-
-        case 4:
-            printf("Sair\n");
-            break;
-
-        default:
-            printf("Nenhuma opcao encontrada.\n");
-            break;
+        else break;
     }
-
     return 0;
 }
