@@ -1,9 +1,11 @@
-//Desconsiderando os Outputs:
+# Desconsiderando os Outputs:
 output/
-main.exe/
+main.exe
 
-// Ignorar todos os arquivos .exe:
+# Ignorar todos os arquivos .exe:
 *.exe
 
-// Ignorar todos os arquivos .bin:
+# Ignorar todos os arquivos .bin:
 *.bin
+.vscode/tasks.json
+
