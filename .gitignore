@@ -1,2 +1,8 @@
 //Desconsiderando os Outputs:
 output/
+
+// Ignorar todos os arquivos .exe:
+*.exe
+
+// Ignorar todos os arquivos .bin:
+*.bin
