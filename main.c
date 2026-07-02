@@ -207,19 +207,33 @@ void iniciarJogo(Config cfg){
     limpar_campo(v1,tam_matriz);
     limpar_campo(v2,tam_matriz);
 }
-//BNVEMM009 pede o tamanho da mat e qtd de navios e salva
+//BNVEMM009 - Pede o tamanho da mat e qtd de navios e salva
 void configurarJogo(Config *cfg){
     printf("Tamanho do campo: ");
     scanf("%d",&cfg->tamanho);
 
+    //BNVEMM011 - Validando se o tamanho dos campos é diferente de 1, caso seja, o valor é alterado para 8.
+    if(cfg->tamanho != 1 && cfg->tamanho < 0){
+        printf("\nErro: Digite apenas numeros validos e positivos! \nAVISO MARUJO: Valor dos Campos foi resetado para 8.\n");
+        cfg->tamanho = 8;//adicionando um valor fixo para o tamanho dos campos, caso o valor seja diferente de 1.
+        while(getchar() != '\n');  // limpando o buffer
+    }
+
     //BNVEMM010 - Validando o Tamnho dos Campos
-    if(cfg->tamanho < 8 ){
+    if(cfg->tamanho < 8){
         cfg->tamanho = 8;//Designando um valor fixo para o tamanho dos campos, caso o valor seja inferior a 8.
         printf("Campo Informado Inferior a 8!\nAVISO MARUJO: Valor dos Campos foi resetado para 8.\n");
     }
-
+    
     printf("Quantidade de navios: ");
     scanf("%d",&cfg->quantidade_navios);
+
+    //BNVEMM011 - Validando se a quantidade de navios é diferente de 1, caso seja, o valor é alterado para 4.
+    if(cfg->quantidade_navios != 1 && cfg->quantidade_navios < 0){
+        printf("\nErro: Digite apenas numeros validos e positivos! \nAVISO MARUJO: Qtd. de Navios foi resetado para 4.\n");
+        cfg->quantidade_navios = 4;//adicionando um valor fixo para o tamanho dos campos, caso o valor seja diferente de 1.
+        while(getchar() != '\n');  // limpando o buffer
+    }
 
     //BNVEMM010 - Validando a Qtd. de Navios
     if(cfg->quantidade_navios < 4){
@@ -231,7 +245,7 @@ void configurarJogo(Config *cfg){
 
     salvarConfig(*cfg);
 }
-//BNVEMM009 carregar o jogo salvo do arquivo e mostra o campo carregado
+//BNVEMM009 - Carregar o jogo salvo do arquivo e mostra o campo carregado
 void carregarPartida(){
     int **a, **b, tam_matriz;
 
@@ -243,8 +257,9 @@ void carregarPartida(){
     limpar_campo(a,tam_matriz);
     limpar_campo(b,tam_matriz);
 }
-//BNVEMM - Função principal:
+//BNVEMM001 - Chamando a main:
 int main(){
+    //BNVEMM010 - Inicializando a semente do gerador de números aleatórios.
     srand(time(NULL));
 
     Config cfg = carregarConfig();
@@ -257,6 +272,11 @@ int main(){
         printf("4 - Sair\n");
         printf("Escolha: ");
         scanf("%d",&op);
+
+        if(op!= 1 && op!= 2 && op!= 3 && op!= 4){
+            printf("\nDigite apenas numeros validos e positivos!\n");
+            while(getchar() != '\n');  // limpando o buffer
+        }
 
         switch(op){
 
