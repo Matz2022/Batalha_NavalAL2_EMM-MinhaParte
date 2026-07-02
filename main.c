@@ -7,201 +7,280 @@
 #define TAMANHO 8
 #define NAVIO 1
 #define NAVIOATINGIDO 2
-#define TAMANHO_NAVIO 2  
-#define QTD_NAVIOS 4 
-
-
-
-// BNEMM - Defini uma estrutura para que o navio possa funcionar
+//BNVEMM007 - tamanho do jogo e quantidades de barco na matriz
 typedef struct {
-    int linha[TAMANHO_NAVIO];
-    int coluna[TAMANHO_NAVIO];
-    int partesAtingidas;
-    int afundado;
-} Navio;
-
-// BNEMM - Verefica a posição células
-int verificaSobreposicao(int **campo, int tamanho, int linha, int coluna) {
-    if (linha < 0 || linha >= tamanho || coluna < 0 || coluna >= tamanho)
-        return 1;
-
-    return campo[linha][coluna] != AGUA;
+    int tamanho;  
+    int quantidade_navios;  
+} Config;
+//BNVEMM007 - criar linha e criar colunas com vetor de inteiros
+int **AlocarMatriz(int tam_matriz){
+    int **m = malloc(tam_matriz * sizeof(int*));
+    for(int i = 0; i < tam_matriz; i++){ //percorrer cada linha
+        m[i] = malloc(tam_matriz * sizeof(int)); //vetor de inteiro para cada linha
+        for(int j = 0; j < tam_matriz; j++) m[i][j] = AGUA; //
+    }
+    return m;
 }
-
-
-// BNVEMM - limpa o campo após a finalização do jogo
-void limpar_campo(int **campo, int tamanho){
-    if(campo != NULL){
-        for(int i = 0; i < tamanho; i++){
-            free(campo[i]);
-        }
-        free(campo);
+//BNVEMM007 - liberar memoria de cada linha da matriz
+void limpar_campo(int **m, int tam_matriz){
+    for(int i = 0; i < tam_matriz; i++) free(m[i]);
+    free(m);
+}
+//BNVEMM007 - salvar config e gravar diretamente do arquivo binario.
+void salvarConfig(Config cfg){
+    FILE *f = fopen("config.bin","wb");
+    if(f){
+        fwrite(&cfg,sizeof(Config),1,f); //verificar e gravar a estruct do arq.
+        fclose(f);
     }
 }
-
-
-// BNVEMM - cria a matriz e quando usado um valor null ou invalido ele da erro
-
-int **AlocarMatriz(int tam){
-    int **matriz = (int **)malloc(tam * sizeof(int *));
-
-    if(matriz == NULL){
-        printf("ERRO\n");
-        return NULL;
+//BNVEMM007 - inicio com valores padrao tam_matriz 8 e 4 nav, 
+Config carregarConfig(){
+    Config cfg = {8,4};
+    
+    FILE *f = fopen("config.bin","rb"); // leitura de arquivo binario
+        if(f){  //abertura do arquivo != NULL
+        fread(&cfg,sizeof(Config),1,f);
+        fclose(f);
     }
-
-    for(int i = 0; i < tam; i++){
-        matriz[i] = (int *)malloc(tam * sizeof(int));
-
-        if(matriz[i] == NULL){
-            for(int j = 0; j < i; j++){
-                free(matriz[j]);
-            }
-            free(matriz);
-            return NULL;
-        }
-
-        for(int j = 0; j < tam; j++){
-            matriz[i][j] = AGUA;
-        }
-    }
-
-    return matriz;
+    return cfg; 
 }
+//BNVEMM007 - salva jogo atual mat A mat B
+void salvarJogo(int **a, int **b, int tam_matriz){
+    FILE *f = fopen("save.bin","wb");
+    fwrite(&tam_matriz,sizeof(int),1,f);
 
-// BNVEMM - Exibi a matriz na tela
+    for(int i=0;i<tam_matriz;i++) fwrite(a[i],sizeof(int),tam_matriz,f);
+    for(int i=0;i<tam_matriz;i++) fwrite(b[i],sizeof(int),tam_matriz,f);
 
-void mostrarmatriz(int **matriz, int tam, const char *titulo){
-    printf("\n%s\n", titulo);
+    fclose(f);
+}
+//BNVEMM009 - carregar jogo salvo
+void carregarJogo(int ***a, int ***b, int *tam_matriz){
+    FILE *f = fopen("save.bin","rb");// abre arquivo
 
-    printf("  ");
-    for(int j = 0; j < tam; j++){
-        printf("%d ", j);
+    if(!f){ 
+        printf("Sem save!\n");
+        return;
     }
-    printf("\n");
+    fread(tam_matriz,sizeof(int),1,f); // lê tamanho
 
-    for(int i = 0; i < tam; i++){
-        printf("%d ", i);
-        for(int j = 0; j < tam; j++){
-            printf("%d ", matriz[i][j]);
+    *a = AlocarMatriz(*tam_matriz); // cria matriz A
+    *b = AlocarMatriz(*tam_matriz); // cria matriz B
+
+    for(int i=0;i<*tam_matriz;i++) 
+        fread((*a)[i],sizeof(int),*tam_matriz,f); // lê matriz A
+
+    for(int i=0;i<*tam_matriz;i++) 
+        fread((*b)[i],sizeof(int),*tam_matriz,f); // lê matriz B
+    fclose(f); 
+}
+//BNVEMM007 - mostrar campo e percorrer as linhas
+void mostrarCampo(int **m, int tam_matriz){
+    for(int i=0;i<tam_matriz;i++){
+        for(int j=0;j<tam_matriz;j++){
+            if(m[i][j]==AGUA) printf("~ ");
+            else if(m[i][j]==NAVIO) printf("O ");
+            else if(m[i][j]==NAVIOATINGIDO) printf("X ");
+            else printf("7 ");
         }
         printf("\n");
     }
 }
+//BNVEMM007 Posicionar navios aleatoriamente e quantidade.
+void posicionarBarcos(int **c, int tam_matriz, int qtd){
 
-// BNVEMM - Defini posições aleatorias para os navios no campo
+    for(int i=0;i<qtd;i++){ 
+        while(1){
 
-void posicionarNaviosAleatorio(int **campo, Navio *navios, int tamanho, int qtd_navios) {
-    for (int i = 0; i < qtd_navios; i++) {
-        int posicionado = 0;
+            int l=rand()%tam_matriz;     // linha aleatória
+            int col=rand()%tam_matriz;  // coluna aleatória
+            int d=rand()%2;      // direção (0 ou 1)
 
-        while (!posicionado) {
-            int orientacao = rand() % 2;
+            if(d==0 && col<tam_matriz-1 &&
+               c[l][col]==AGUA && c[l][col+1]==AGUA){
 
-            int lin1 = rand() % tamanho;
-            int col1 = rand() % tamanho;
+                c[l][col]=c[l][col+1]=NAVIO;
+                break;
+            }
+            if(d==1 && l<tam_matriz-1 &&
+               c[l][col]==AGUA && c[l+1][col]==AGUA){
 
-            int lin2 = lin1 + (orientacao == 1 ? 1 : 0);
-            int col2 = col1 + (orientacao == 0 ? 1 : 0);
-
-            if (lin2 < tamanho && col2 < tamanho) {
-                if (!verificaSobreposicao(campo, tamanho, lin1, col1) &&
-                    !verificaSobreposicao(campo, tamanho, lin2, col2)) {
-
-                    navios[i].linha[0] = lin1;
-                    navios[i].coluna[0] = col1;
-                    navios[i].linha[1] = lin2;
-                    navios[i].coluna[1] = col2;
-                    navios[i].partesAtingidas = 0;
-                    navios[i].afundado = 0;
-
-                    campo[lin1][col1] = NAVIO;
-                    campo[lin2][col2] = NAVIO;
-
-                    posicionado = 1;
-                }
+                c[l][col]=c[l+1][col]=NAVIO;
+                break;
             }
         }
     }
 }
+int verificarVitoria(int **c,int tam_matriz){
+    for(int i=0;i<tam_matriz;i++)
+        for(int j=0;j<tam_matriz;j++)
+            if(c[i][j]==NAVIO) return 0;
+    return 1;
+}
+void turnoJogador(int **inimigo,int **visao,int tam_matriz){
+    for(int i=0;i<3;i++){
+        int pos;
+        printf("Ataque %d (-1 sair): ",i+1);
+        scanf("%d",&pos);
 
-int main(){
-    srand((unsigned int)time(NULL));
+        if(pos==-1) exit(0);
 
-    printf("1 = Novo Jogo\n");
-    printf("2 = Configurar\n");
-    printf("3 = Carregar ultimo Jogo\n");
-    printf("4 = Sair\n");
+        int l=pos/tam_matriz, c=pos%tam_matriz;
 
-// BNVEMM - Definição de variaveis
+        if(l<0||l>=tam_matriz||c<0||c>=tam_matriz){
+            printf("Invalido!\n"); i--; continue;
+        }
 
-    int n;
-    int **seu_campo = NULL;
-    int **campo_visao_adversario = NULL;
-    int **campo_computador = NULL;
-    int **visao_computador = NULL;
+        if(visao[l][c]!=AGUADESCONHECIDA){
+            printf("Ja atacado!\n"); i--; continue;
+        }
 
-    scanf("%d", &n);
-
-    switch(n){
-
-        case 1:
-            printf("Novo Jogo\n");
-
-            seu_campo = AlocarMatriz(TAMANHO);
-            campo_visao_adversario = AlocarMatriz(TAMANHO);
-            campo_computador = AlocarMatriz(TAMANHO);
-            visao_computador = AlocarMatriz(TAMANHO);
-
-            Navio navios_jogador[QTD_NAVIOS];
-            Navio navios_computador[QTD_NAVIOS];
-            
-            // BNVEMM - Esconde os navios adversarios
-            
-            if(campo_visao_adversario != NULL && visao_computador != NULL){
-                for(int i = 0; i < TAMANHO; i++){
-                    for(int j = 0; j < TAMANHO; j++){
-                        campo_visao_adversario[i][j] = AGUADESCONHECIDA;
-                        visao_computador[i][j] = AGUADESCONHECIDA;
-                    }
-                }
-            }
- 
-        // BNVEMM - Posiciona os navios de forma aleatorias
-        
-            if(seu_campo != NULL && campo_visao_adversario != NULL && campo_computador != NULL && visao_computador != NULL){
-                
-                posicionarNaviosAleatorio(seu_campo, navios_jogador, TAMANHO, QTD_NAVIOS);
-                posicionarNaviosAleatorio(campo_computador, navios_computador, TAMANHO, QTD_NAVIOS);
-
-                printf("\nMatrizes alocadas e navios de ambos posicionados com sucesso!\n");
-
-                mostrarmatriz(seu_campo, TAMANHO, "SEU CAMPO (NAVIOS = 1)");
-                mostrarmatriz(campo_visao_adversario, TAMANHO, "CAMPO DO ADVERSARIO (ESCONDIDO)");
-
-                limpar_campo(seu_campo, TAMANHO);
-                limpar_campo(campo_visao_adversario, TAMANHO);
-                limpar_campo(campo_computador, TAMANHO);
-                limpar_campo(visao_computador, TAMANHO);
-            }
-            break;
-
-        case 2:
-            printf("Configurar\n");
-            break;
-
-        case 3:
-            printf("Carregar ultimo jogo\n");
-            break;
-
-        case 4:
-            printf("Sair\n");
-            break;
-
-        default:
-            printf("Nenhuma opcao encontrada.\n");
-            break;
+        if(inimigo[l][c]==NAVIO){
+            printf("Impacto!\n");
+            inimigo[l][c]=NAVIOATINGIDO;
+            visao[l][c]=NAVIOATINGIDO;
+        } else{
+            printf("Agua!\n");
+            visao[l][c]=AGUA;
+        }
     }
+}
+void turnoComputador(int **seu,int **visao,int tam_matriz){
+    int a=0;
+    while(a<3){
+        int l=rand()%tam_matriz,c=rand()%tam_matriz;
+
+        if(visao[l][c]==AGUADESCONHECIDA){
+            if(seu[l][c]==NAVIO){
+                printf("Computador acertou!\n");
+                seu[l][c]=NAVIOATINGIDO;
+                visao[l][c]=NAVIOATINGIDO;
+            } else{
+                printf("Computador errou!\n");
+                visao[l][c]=AGUA;
+            }
+            a++;
+        }
+    }
+}
+//BNVEMM009 - iniciar o jogo
+void iniciarJogo(Config cfg){
+    int tam_matriz = cfg.tamanho;
+
+    int **seu = AlocarMatriz(tam_matriz);
+    int **ini = AlocarMatriz(tam_matriz);
+    int **v1  = AlocarMatriz(tam_matriz);
+    int **v2  = AlocarMatriz(tam_matriz);
+    
+    posicionarBarcos(seu,tam_matriz,cfg.quantidade_navios);
+    posicionarBarcos(ini,tam_matriz,cfg.quantidade_navios);
+
+    for(int i=0;i<tam_matriz;i++)
+        for(int j=0;j<tam_matriz;j++)
+            v1[i][j] = v2[i][j] = AGUADESCONHECIDA;
+
+    while(1){
+        printf("\nSEU CAMPO\n");
+        mostrarCampo(seu,tam_matriz);
+
+        printf("\nSUA VISAO\n");
+        mostrarCampo(v1,tam_matriz);
+
+        turnoJogador(ini,v1,tam_matriz);
+        if(verificarVitoria(ini,tam_matriz)){
+            printf("VOCE VENCEU!\n");
+            break;
+        }
+
+        turnoComputador(seu,v2,tam_matriz);
+        if(verificarVitoria(seu,tam_matriz)){
+            printf("VOCE PERDEU!\n");
+            break;
+        }
+
+        salvarJogo(seu,ini,tam_matriz);
+    }
+
+    limpar_campo(seu,tam_matriz);
+    limpar_campo(ini,tam_matriz);
+    limpar_campo(v1,tam_matriz);
+    limpar_campo(v2,tam_matriz);
+}
+//BNVEMM009 pede o tamanho da mat e qtd de navios e salva
+void configurarJogo(Config *cfg){
+    printf("Tamanho do campo: ");
+    scanf("%d",&cfg->tamanho);
+
+    //BNVEMM010 - Validando o Tamnho dos Campos
+    if(cfg->tamanho < 8 ){
+        cfg->tamanho = 8;//Designando um valor fixo para o tamanho dos campos, caso o valor seja inferior a 8.
+        printf("Campo Informado Inferior a 8!\nAVISO MARUJO: Valor dos Campos foi resetado para 8.\n");
+    }
+
+    printf("Quantidade de navios: ");
+    scanf("%d",&cfg->quantidade_navios);
+
+    //BNVEMM010 - Validando a Qtd. de Navios
+    if(cfg->quantidade_navios < 4){
+        cfg->quantidade_navios = 4; //Designando um valor fixo de navios, caso o valor seja inferior a 4.
+        printf("Qtd. de Navios Informado Inferior a 4!\nATENCAO MARUJO: Qtd. de Navios foi resetada para 4 navios para cada Jogador.\n");
+    } else if (cfg->quantidade_navios > 20){
+        printf("\n PERIGO AVISTA MARUJO: Com essa Qtd. de Navios na Frota, podemos ter lentidao ao Carregar um Novo Jogo!!!\n");
+    }
+
+    salvarConfig(*cfg);
+}
+//BNVEMM009 carregar o jogo salvo do arquivo e mostra o campo carregado
+void carregarPartida(){
+    int **a, **b, tam_matriz;
+
+    carregarJogo(&a,&b,&tam_matriz);
+
+    printf("\nJogo carregado:\n");
+    mostrarCampo(a,tam_matriz);
+
+    limpar_campo(a,tam_matriz);
+    limpar_campo(b,tam_matriz);
+}
+//BNVEMM - Função principal:
+int main(){
+    srand(time(NULL));
+
+    Config cfg = carregarConfig();
+    int op;
+
+    do{
+        printf("\n1 - Novo Jogo\n");
+        printf("2 - Configurar\n");
+        printf("3 - Carregar Jogo\n");
+        printf("4 - Sair\n");
+        printf("Escolha: ");
+        scanf("%d",&op);
+
+        switch(op){
+
+            case 1:
+                iniciarJogo(cfg);
+                break;
+
+            case 2:
+                configurarJogo(&cfg);
+                break;
+
+            case 3:
+                carregarPartida();
+                break;
+
+            case 4:
+                printf("Saindo...\n");
+                break;
+
+            default:
+                printf("Opcao invalida!\n");
+        }
+
+    }while(op != 4);
 
     return 0;
 }
